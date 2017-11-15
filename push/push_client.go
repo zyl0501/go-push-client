@@ -12,21 +12,39 @@ import (
 	"io"
 	"github.com/zyl0501/go-push/common"
 	"github.com/zyl0501/go-push/api"
+	"github.com/zyl0501/go-push-client/push/handler"
 )
 
 type PushClient struct {
-	ConnClient ConnectClient
+	connClient        *ConnectClient
+	messageDispatcher common.MessageDispatcher
 }
 
 func (client *PushClient) Init() {
+	client.messageDispatcher = common.MessageDispatcher{}
+	client.messageDispatcher.Register(protocol.HANDSHAKE, handler.PushHandler{})
+	client.messageDispatcher.Register(protocol.PUSH, handler.PushHandler{})
 }
 
 func (client *PushClient) Start() {
-	connectClient.Connect("localhost", 9933)
-	serverConn := client.ConnClient.conn
-	conn := serverConn.GetConn()
+	if client.connClient == nil {
+		client.connClient = &ConnectClient{}
+		client.connClient.Connect("localhost", 9933)
+	}
+	serverConn := client.connClient.conn
+	go client.listen(serverConn)
+}
 
-	//var rc chan []byte
+func (client *PushClient) handler(packet *protocol.Packet, conn *api.Conn) {
+	cmd := packet.Cmd
+	switch cmd {
+	case protocol.HANDSHAKE:
+
+	}
+}
+
+func (client *PushClient) listen(serverConn api.Conn) {
+	conn := serverConn.GetConn()
 	head := make([]byte, protocol.HeadLength)
 	headReadLen := 0
 loop:
@@ -60,7 +78,7 @@ loop:
 							readLen += n
 						} else {
 							packet.Body = body
-							client.handler(&packet, &serverConn)
+							client.messageDispatcher.OnReceive(packet, &serverConn)
 							break
 						}
 					}
@@ -68,63 +86,4 @@ loop:
 			}
 		}
 	}
-}
-
-func (client *PushClient) handler(packet *protocol.Packet, conn *api.Conn) {
-	cmd := packet.Cmd
-	switch cmd {
-	case protocol.HANDSHAKE:
-
-	}
-}
-
-func (client *PushClient) Send(context push.PushContext) (push.PushResult) {
-	conn := client.ConnClient.conn
-
-	packet := protocol.Packet{Cmd: protocol.HANDSHAKE}
-	packet.Body = nil
-	data := protocol.EncodePacket(packet)
-
-	data2 := make([]byte, len(data)*2)
-	copy(data2[0:len(data)], data)
-	copy(data2[len(data):], data)
-	conn.GetConn().Write(data2[0:18])
-	conn.GetConn().Write(data2[18:])
-	return push.PushResult{}
-}
-
-func sender(conn net.TCPConn) {
-	packet := protocol.Packet{Cmd: protocol.HANDSHAKE}
-	packet.Body = stringToSliceByte("aaa")
-	data := protocol.EncodePacket(packet)
-	conn.Write(data[0:len(data)-2])
-	time.Sleep(time.Second * 10)
-	conn.Write(data[len(data)-2:])
-	fmt.Println("send over", len(data), string(data))
-}
-
-func sender1(conn net.TCPConn) {
-	packet := protocol.Packet{Cmd: protocol.HANDSHAKE}
-	packet.Body = stringToSliceByte("aaa")
-	data := protocol.EncodePacket(packet)
-
-	data2 := make([]byte, len(data)*2)
-	copy(data2[0:len(data)], data)
-	copy(data2[len(data):], data)
-	conn.Write(data2[0:18])
-	time.Sleep(time.Second * 10)
-	conn.Write(data2[18:])
-	fmt.Println("send over", len(data), string(data))
-
-	time.Sleep(time.Second * 10)
-}
-
-func stringToSliceByte(s string) []byte {
-	sh := (*reflect.StringHeader)(unsafe.Pointer(&s))
-	bh := reflect.SliceHeader{
-		Data: sh.Data,
-		Len:  sh.Len,
-		Cap:  sh.Len,
-	}
-	return *(*[]byte)(unsafe.Pointer(&bh))
 }
