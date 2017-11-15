@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "RK6kz3Q9OS6uHkkLVEprb1lUOMI=",
+			"path": "github.com/alecthomas/log4go",
+			"revision": "a9cdec6a8ef5b02d7e1b8dd0782d34c62648f07d",
+			"revisionTime": "2017-09-20T10:20:43Z"
+		}
+	],
+	"rootPath": "github.com/zyl0501/go-puch-client"
+}
