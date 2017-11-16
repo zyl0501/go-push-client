@@ -1,13 +1,7 @@
 package push
 
 import (
-	"github.com/zyl0501/go-push/api/push"
 	"github.com/zyl0501/go-push/api/protocol"
-	"net"
-	"time"
-	"fmt"
-	"reflect"
-	"unsafe"
 	log "github.com/alecthomas/log4go"
 	"io"
 	"github.com/zyl0501/go-push/common"
@@ -21,9 +15,9 @@ type PushClient struct {
 }
 
 func (client *PushClient) Init() {
-	client.messageDispatcher = common.MessageDispatcher{}
-	client.messageDispatcher.Register(protocol.HANDSHAKE, handler.PushHandler{})
-	client.messageDispatcher.Register(protocol.PUSH, handler.PushHandler{})
+	client.messageDispatcher = common.NewMessageDispatcher()
+	client.messageDispatcher.Register(protocol.HANDSHAKE, handler.NewHandshakeOkHandler())
+	client.messageDispatcher.Register(protocol.PUSH, handler.NewPushHandler())
 }
 
 func (client *PushClient) Start() {
@@ -33,14 +27,6 @@ func (client *PushClient) Start() {
 	}
 	serverConn := client.connClient.conn
 	go client.listen(serverConn)
-}
-
-func (client *PushClient) handler(packet *protocol.Packet, conn *api.Conn) {
-	cmd := packet.Cmd
-	switch cmd {
-	case protocol.HANDSHAKE:
-
-	}
 }
 
 func (client *PushClient) listen(serverConn api.Conn) {
@@ -78,7 +64,7 @@ loop:
 							readLen += n
 						} else {
 							packet.Body = body
-							client.messageDispatcher.OnReceive(packet, &serverConn)
+							client.messageDispatcher.OnReceive(packet, serverConn)
 							break
 						}
 					}

@@ -56,4 +56,5 @@ func (client *ConnectClient) handshake() {
 	handshakeMsg.MaxHeartbeat = 10000
 	handshakeMsg.Timestamp = 0
 	handshakeMsg.Send()
+	context.Cipher0 = &security.AesCipher{Key: handshakeMsg.ClientKey, Iv: handshakeMsg.Iv}
 }

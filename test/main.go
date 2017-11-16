@@ -9,6 +9,7 @@ import (
 func main() {
 	connectClient := push.ConnectClient{}
 	pushClient := push.PushClient{}
+	pushClient.Init()
 	pushClient.Start()
 
 	FakeBizProcess(&pushClient)
