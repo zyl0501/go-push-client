@@ -1,19 +1,18 @@
 package handler
 
 import (
-	"github.com/zyl0501/go-push/core/handler"
-	"github.com/zyl0501/go-push/api/protocol"
-	"github.com/zyl0501/go-push/api"
+	"github.com/zyl0501/go-push-client/push/api/protocol"
+	"github.com/zyl0501/go-push-client/push/api"
 	"github.com/zyl0501/go-push-client/push/message"
 	log "github.com/alecthomas/log4go"
 )
 
 type PushHandler struct {
-	*handler.BaseMessageHandler
+	*BaseMessageHandler
 }
 
 func NewPushHandler() *PushHandler {
-	baseHandler := &handler.BaseMessageHandler{}
+	baseHandler := &BaseMessageHandler{}
 	handler := PushHandler{BaseMessageHandler: baseHandler}
 	handler.BaseMessageHandlerWrap = &handler
 	return &handler

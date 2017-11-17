@@ -1,20 +1,19 @@
 package handler
 
 import (
-	"github.com/zyl0501/go-push/core/handler"
-	"github.com/zyl0501/go-push/api/protocol"
-	"github.com/zyl0501/go-push/api"
+	"github.com/zyl0501/go-push-client/push/api/protocol"
+	"github.com/zyl0501/go-push-client/push/api"
 	log "github.com/alecthomas/log4go"
 	message2 "github.com/zyl0501/go-push-client/push/message"
-	"github.com/zyl0501/go-push/common/security"
+	"github.com/zyl0501/go-push-client/push/security"
 )
 
 type HandshakeOkHandler struct {
-	*handler.BaseMessageHandler
+	*BaseMessageHandler
 }
 
 func NewHandshakeOkHandler() *HandshakeOkHandler {
-	baseHandler := &handler.BaseMessageHandler{}
+	baseHandler := &BaseMessageHandler{}
 	handler := HandshakeOkHandler{BaseMessageHandler: baseHandler}
 	handler.BaseMessageHandlerWrap = &handler
 	return &handler

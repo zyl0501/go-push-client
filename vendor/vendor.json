@@ -7,7 +7,13 @@
 			"path": "github.com/alecthomas/log4go",
 			"revision": "a9cdec6a8ef5b02d7e1b8dd0782d34c62648f07d",
 			"revisionTime": "2017-09-20T10:20:43Z"
+		},
+		{
+			"checksumSHA1": "P1IAhpaqFMX/Z6GLa9QLisoSIf0=",
+			"path": "github.com/orcaman/concurrent-map",
+			"revision": "d4c23bd0e01134806215ffe65ba3fd22ec6721f7",
+			"revisionTime": "2017-10-24T15:42:51Z"
 		}
 	],
-	"rootPath": "github.com/zyl0501/go-puch-client"
+	"rootPath": "github.com/zyl0501/go-push-client"
 }

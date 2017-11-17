@@ -1,75 +1,127 @@
 package push
 
 import (
-	"github.com/zyl0501/go-push/api/protocol"
+	"github.com/zyl0501/go-push-client/push/api/protocol"
 	log "github.com/alecthomas/log4go"
 	"io"
-	"github.com/zyl0501/go-push/common"
-	"github.com/zyl0501/go-push/api"
+	"github.com/zyl0501/go-push-client/push/api"
 	"github.com/zyl0501/go-push-client/push/handler"
+	"net"
+	"strconv"
+	"github.com/zyl0501/go-push-client/push/security"
+	"github.com/zyl0501/go-push-client/push/message"
 )
 
 type PushClient struct {
-	connClient        *ConnectClient
-	messageDispatcher common.MessageDispatcher
+	conn              api.Conn
+	config            ClientConfig
+	messageDispatcher message.MessageDispatcher
 }
 
 func (client *PushClient) Init() {
-	client.messageDispatcher = common.NewMessageDispatcher()
+	client.messageDispatcher = message.NewMessageDispatcher()
 	client.messageDispatcher.Register(protocol.HANDSHAKE, handler.NewHandshakeOkHandler())
 	client.messageDispatcher.Register(protocol.PUSH, handler.NewPushHandler())
 }
 
 func (client *PushClient) Start() {
-	if client.connClient == nil {
-		client.connClient = &ConnectClient{}
-		client.connClient.Connect("localhost", 9933)
-	}
-	serverConn := client.connClient.conn
+	client.Connect("localhost", 9933)
+	serverConn := client.conn
 	go client.listen(serverConn)
 }
 
 func (client *PushClient) listen(serverConn api.Conn) {
 	conn := serverConn.GetConn()
-	head := make([]byte, protocol.HeadLength)
-	headReadLen := 0
-loop:
 	for {
-		n, err := conn.Read(head[headReadLen:protocol.HeadLength])
+		packet, err := ReadPacket(conn)
 		if err != nil {
 			if err == io.EOF {
 				log.Error("%s connect error: %v", conn.RemoteAddr().String(), err)
-				break loop
-			}
-		} else {
-			if uint32(headReadLen)+uint32(n) < uint32(protocol.HeadLength) {
-				headReadLen += n
+				break
 			} else {
-				headReadLen = 0
-				packet, bodyLength := protocol.DecodePacket(head)
-				readLen := 0
-				body := make([]byte, bodyLength)
-			bodyLoop:
-				for {
-					n, err := conn.Read(body[readLen: bodyLength])
-					if err != nil {
-						if err == io.EOF {
-							log.Error("%s connect error: %v", conn.RemoteAddr().String(), err)
-							break loop
-						} else {
-							break bodyLoop
-						}
-					} else {
-						if uint32(readLen)+uint32(n) < bodyLength {
-							readLen += n
-						} else {
-							packet.Body = body
-							client.messageDispatcher.OnReceive(packet, serverConn)
-							break
-						}
-					}
-				}
+				continue
 			}
 		}
+		client.messageDispatcher.OnReceive(*packet, serverConn)
 	}
+}
+
+func (client *PushClient) BindUser(userId string, tags string) {
+	if userId == "" {
+		log.Warn("bind user is null")
+		return
+	}
+	ctx := client.conn.GetSessionContext()
+	if ctx.UserId != "" {
+		//已经绑定
+		if ctx.UserId == userId {
+			if ctx.Tags == tags {
+				return
+			}
+		} else {
+			//切换用户，要先解绑老用户
+			client.UnbindUser()
+		}
+	}
+
+	ctx.UserId = userId
+	ctx.Tags = tags
+	client.config.UserId = userId
+	client.config.Tags = tags
+
+	msg := message.NewBindUserMessage0(client.conn)
+	msg.UserId = userId
+	msg.Tags = tags
+
+	log.Info("<<< do bind user, userId=%s", userId)
+	msg.Send()
+}
+
+func (client *PushClient) UnbindUser() {
+
+}
+
+func (client *PushClient) Connect(host string, port int) *net.TCPConn {
+	server := host + ":" + strconv.Itoa(port)
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", server)
+	if err != nil {
+		log.Error("Fatal error:%s", err)
+		return nil
+	}
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		log.Error("Fatal error:%s", err)
+		return nil
+	}
+	client.conn = NewPushConnection()
+	client.conn.Init(conn)
+	client.handshake()
+	return conn
+}
+
+func (client *PushClient) Close() {
+	if client.conn != nil {
+		err := client.conn.Close()
+		if err != nil {
+			log.Error("Fatal error:%s", err)
+		}
+	}
+}
+
+func (client *PushClient) handshake() {
+	context := client.conn.GetSessionContext()
+	context.Cipher0, _ = security.NewRsaCipher()
+	handshakeMsg := message.NewHandshakeMessage0(client.conn)
+	handshakeMsg.DeviceId = "1111"
+	handshakeMsg.OsName = "Windows"
+	handshakeMsg.OsVersion = "10"
+	handshakeMsg.ClientVersion = "1.0"
+	handshakeMsg.Iv = security.CipherBoxIns.RandomAESIV()
+	handshakeMsg.ClientKey = security.CipherBoxIns.RandomAESKey()
+	handshakeMsg.MinHeartbeat = 10000
+	handshakeMsg.MaxHeartbeat = 10000
+	handshakeMsg.Timestamp = 0
+	handshakeMsg.Send()
+	context.Cipher0 = &security.AesCipher{Key: handshakeMsg.ClientKey, Iv: handshakeMsg.Iv}
 }

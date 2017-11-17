@@ -2,14 +2,13 @@ package message
 
 import (
 	"io"
-	"github.com/zyl0501/go-push/common/message"
-	"github.com/zyl0501/go-push/api"
-	"github.com/zyl0501/go-push/api/protocol"
+	"github.com/zyl0501/go-push-client/push/api"
+	"github.com/zyl0501/go-push-client/push/api/protocol"
 	log "github.com/alecthomas/log4go"
 )
 
 type HandshakeOKMessage struct {
-	*message.ByteBufMessage
+	*ByteBufMessage
 
 	ServerKey  []byte
 	Heartbeat  int32
@@ -18,8 +17,8 @@ type HandshakeOKMessage struct {
 }
 
 func NewHandshakeOKMessage(packet protocol.Packet, conn api.Conn) *HandshakeOKMessage {
-	baseMessage := message.BaseMessage{Pkt:packet, Connection: conn}
-	byteMessage := message.ByteBufMessage{BaseMessage: &baseMessage}
+	baseMessage := BaseMessage{Pkt:packet, Connection: conn}
+	byteMessage := ByteBufMessage{BaseMessage: &baseMessage}
 	msg := HandshakeOKMessage{ByteBufMessage: &byteMessage}
 	msg.BaseMessageCodec = &msg
 	msg.ByteBufMessageCodec = &msg
@@ -28,8 +27,8 @@ func NewHandshakeOKMessage(packet protocol.Packet, conn api.Conn) *HandshakeOKMe
 
 func NewHandshakeOKMessage0(conn api.Conn) *HandshakeOKMessage {
 	packet := protocol.Packet{Cmd:protocol.HANDSHAKE, SessionId:protocol.GetSessionId()}
-	baseMessage := message.BaseMessage{Pkt:packet, Connection: conn}
-	byteMessage := message.ByteBufMessage{BaseMessage: &baseMessage}
+	baseMessage := BaseMessage{Pkt:packet, Connection: conn}
+	byteMessage := ByteBufMessage{BaseMessage: &baseMessage}
 	msg := HandshakeOKMessage{ByteBufMessage: &byteMessage}
 	msg.BaseMessageCodec = &msg
 	msg.ByteBufMessageCodec = &msg
@@ -38,15 +37,15 @@ func NewHandshakeOKMessage0(conn api.Conn) *HandshakeOKMessage {
 
 func (msg *HandshakeOKMessage) DecodeByteBufMessage(reader io.Reader) {
 	log.Debug("HandshakeOKMessage decodeByteBufMessage")
-	msg.ServerKey = message.DecodeBytes(reader)
-	msg.Heartbeat = message.DecodeInt32(reader)
-	msg.SessionId = message.DecodeString(reader)
-	msg.ExpireTime = message.DecodeInt64(reader)
+	msg.ServerKey = DecodeBytes(reader)
+	msg.Heartbeat = DecodeInt32(reader)
+	msg.SessionId = DecodeString(reader)
+	msg.ExpireTime = DecodeInt64(reader)
 }
 
 func (msg *HandshakeOKMessage) EncodeByteBufMessage(writer io.Writer) {
-	message.EncodeBytes(writer, msg.ServerKey)
-	message.EncodeInt32(writer, msg.Heartbeat)
-	message.EncodeString(writer, msg.SessionId)
-	message.EncodeInt64(writer, msg.ExpireTime)
+	EncodeBytes(writer, msg.ServerKey)
+	EncodeInt32(writer, msg.Heartbeat)
+	EncodeString(writer, msg.SessionId)
+	EncodeInt64(writer, msg.ExpireTime)
 }

@@ -1,18 +1,17 @@
 package message
 
 import (
-	"github.com/zyl0501/go-push/common/message"
-	"github.com/zyl0501/go-push/api"
-	"github.com/zyl0501/go-push/api/protocol"
+	"github.com/zyl0501/go-push-client/push/api"
+	"github.com/zyl0501/go-push-client/push/api/protocol"
 )
 
 type PushMessage struct {
-	*message.BaseMessage
+	*BaseMessage
 	Content []byte
 }
 
 func NewPushUpMessage(packet protocol.Packet, conn api.Conn) *PushMessage {
-	baseMessage := message.BaseMessage{Pkt: packet, Connection: conn}
+	baseMessage := BaseMessage{Pkt: packet, Connection: conn}
 	msg := PushMessage{BaseMessage: &baseMessage}
 	msg.BaseMessageCodec = &msg
 	return &msg
@@ -20,7 +19,7 @@ func NewPushUpMessage(packet protocol.Packet, conn api.Conn) *PushMessage {
 
 func NewPushMessage0(conn api.Conn) *PushMessage {
 	packet := protocol.Packet{Cmd: protocol.PUSH, SessionId: protocol.GetSessionId()}
-	baseMessage := message.BaseMessage{Pkt: packet, Connection: conn}
+	baseMessage := BaseMessage{Pkt: packet, Connection: conn}
 	msg := PushMessage{BaseMessage: &baseMessage}
 	msg.BaseMessageCodec = &msg
 	return &msg
