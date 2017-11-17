@@ -39,7 +39,8 @@ func (client *PushClient) listen(serverConn api.Conn) {
 				log.Error("%s connect error: %v", conn.RemoteAddr().String(), err)
 				break
 			} else {
-				continue
+				log.Error("%s read error: %v", conn.RemoteAddr().String(), err)
+				break
 			}
 		}
 		client.messageDispatcher.OnReceive(*packet, serverConn)
