@@ -22,6 +22,7 @@ func (client *PushClient) Init() {
 	client.messageDispatcher = message.NewMessageDispatcher()
 	client.messageDispatcher.Register(protocol.HANDSHAKE, handler.NewHandshakeOkHandler())
 	client.messageDispatcher.Register(protocol.PUSH, handler.NewPushHandler())
+	client.messageDispatcher.Register(protocol.OK, handler.NewOKMessageHandler())
 }
 
 func (client *PushClient) Start() {
