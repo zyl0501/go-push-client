@@ -1,6 +1,10 @@
 package api
 
-import "net"
+import (
+	"net"
+	"time"
+	"github.com/zyl0501/go-push-client/push/api/protocol"
+)
 
 const (
 	STATUS_NEW          byte = 0
@@ -20,6 +24,7 @@ type Conn interface {
 	GetConn() net.Conn
 	GetSessionContext() *SessionContext
 	SetSessionContext(context SessionContext)
+	Send(packet protocol.Packet)
 }
 
 type ConnectionManager interface {
@@ -34,7 +39,7 @@ type ConnectionManager interface {
 type SessionContext struct {
 	UserId  string
 	Tags      string
-	Heartbeat int32
+	Heartbeat time.Duration
 	Cipher0   Cipher
 }
 

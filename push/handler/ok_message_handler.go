@@ -29,5 +29,4 @@ func (handler *OKMessageHandler) HandleMessage(m api.Message) {
 	case protocol.BIND:
 		log.Debug("receive bind ok ack")
 	}
-
 }

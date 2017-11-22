@@ -6,6 +6,7 @@ import (
 	log "github.com/alecthomas/log4go"
 	message2 "github.com/zyl0501/go-push-client/push/message"
 	"github.com/zyl0501/go-push-client/push/security"
+	"bufio"
 )
 
 type HandshakeOkHandler struct {
@@ -46,6 +47,8 @@ func (handler *HandshakeOkHandler) HandleMessage(m api.Message) {
 	ctx.Cipher0 = &security.AesCipher{Key: sessionKey, Iv: cp.Iv}
 
 	//触发握手成功事件
-
+	writer := bufio.NewWriter(conn.GetConn())
+	writer.Write(protocol.EncodePacket(protocol.Packet{Cmd:protocol.HEARTBEAT}))
+	writer.Flush()
 	//保存token
 }

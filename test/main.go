@@ -23,7 +23,7 @@ func FakeBizProcess(pushClient *push.PushClient) {
 
 		if !bind {
 			bind = true
-			pushClient.BindUser("user-1", "")
+			pushClient.BindUser("user-0", "")
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"github.com/zyl0501/go-push-client/push/security"
 	"github.com/zyl0501/go-push-client/push/message"
+	"time"
 )
 
 type PushClient struct {
@@ -23,6 +24,7 @@ func (client *PushClient) Init() {
 	client.messageDispatcher.Register(protocol.HANDSHAKE, handler.NewHandshakeOkHandler())
 	client.messageDispatcher.Register(protocol.PUSH, handler.NewPushHandler())
 	client.messageDispatcher.Register(protocol.OK, handler.NewOKMessageHandler())
+	client.messageDispatcher.Register(protocol.HEARTBEAT, &handler.HeartbeatHandler{})
 }
 
 func (client *PushClient) Start() {
@@ -121,8 +123,8 @@ func (client *PushClient) handshake() {
 	handshakeMsg.ClientVersion = "1.0"
 	handshakeMsg.Iv = security.CipherBoxIns.RandomAESIV()
 	handshakeMsg.ClientKey = security.CipherBoxIns.RandomAESKey()
-	handshakeMsg.MinHeartbeat = 10000
-	handshakeMsg.MaxHeartbeat = 10000
+	handshakeMsg.MinHeartbeat = 5 * time.Second
+	handshakeMsg.MaxHeartbeat = 10 * time.Second
 	handshakeMsg.Timestamp = 0
 	handshakeMsg.Send()
 	context.Cipher0 = &security.AesCipher{Key: handshakeMsg.ClientKey, Iv: handshakeMsg.Iv}

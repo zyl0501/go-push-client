@@ -5,6 +5,7 @@ import (
 	"github.com/zyl0501/go-push-client/push/api"
 	"time"
 	"github.com/zyl0501/go-push-client/push/security"
+	"github.com/zyl0501/go-push-client/push/api/protocol"
 )
 
 var (
@@ -50,11 +51,11 @@ func (serverConn *PushConnection) IsConnected() bool {
 }
 
 func (serverConn *PushConnection) IsReadTimeout() bool {
-	return int32(time.Since(serverConn.lastReadTime)) > serverConn.context.Heartbeat
+	return time.Since(serverConn.lastReadTime) > serverConn.context.Heartbeat
 }
 
 func (serverConn *PushConnection) IsWriteTimeout() bool {
-	return int32(time.Since(serverConn.lastReadTime)) > serverConn.context.Heartbeat
+	return time.Since(serverConn.lastReadTime) > serverConn.context.Heartbeat
 }
 
 func (serverConn *PushConnection) UpdateLastReadTime() {
@@ -82,4 +83,8 @@ func (serverConn *PushConnection) GetSessionContext() *api.SessionContext {
 
 func (serverConn *PushConnection) SetSessionContext(context api.SessionContext) {
 	serverConn.context = context
+}
+
+func (serverConn *PushConnection) Send(packet protocol.Packet){
+
 }
