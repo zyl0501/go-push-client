@@ -12,6 +12,8 @@ import (
 	"github.com/zyl0501/go-push-client/push/message"
 	"time"
 	"context"
+	"github.com/zyl0501/go-push/core/session"
+	"github.com/zyl0501/go-push/core/connection"
 )
 
 type PushClient struct {
@@ -26,6 +28,7 @@ func (client *PushClient) Init() {
 	client.messageDispatcher.Register(protocol.PUSH, handler.NewPushHandler())
 	client.messageDispatcher.Register(protocol.OK, handler.NewOKMessageHandler())
 	client.messageDispatcher.Register(protocol.HEARTBEAT, &handler.HeartbeatHandler{})
+	client.messageDispatcher.Register(protocol.FAST_CONNECT, handler.NewFastConnectOKHandler())
 }
 
 func (client *PushClient) Start() {
@@ -139,6 +142,16 @@ func (client *PushClient) handshake() {
 	handshakeMsg.Timestamp = 0
 	handshakeMsg.Send()
 	ctx.Cipher0 = &security.AesCipher{Key: handshakeMsg.ClientKey, Iv: handshakeMsg.Iv}
+}
+
+func (client *PushClient) fastConnect() {
+	msg := message.NewFastConnectMessage0(client.conn)
+	msg.DeviceId = DEVICE_ID;
+	msg.SessionId = session.sessionId;
+	msg.ExpireHeartbeat = MAX_HB_TIMEOUT_COUNT;
+	msg.Send();
+	log.Warn("<<< do fast connect, message=%s", msg)
+	client.conn.GetSessionContext().Cipher0 = session.cipher;
 }
 
 func (client *PushClient) heartbeatCheck(ctx context.Context, cancel context.CancelFunc) {
