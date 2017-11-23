@@ -11,6 +11,7 @@ import (
 	"github.com/zyl0501/go-push-client/push/security"
 	"github.com/zyl0501/go-push-client/push/message"
 	"time"
+	"context"
 )
 
 type PushClient struct {
@@ -29,12 +30,17 @@ func (client *PushClient) Init() {
 
 func (client *PushClient) Start() {
 	client.Connect("localhost", 9933)
-	serverConn := client.conn
-	go client.listen(serverConn)
+
+	connCtx, cancel := context.WithCancel(context.Background())
+	go client.listen()
+	go client.heartbeatCheck(connCtx, cancel)
+	client.handshake()
 }
 
-func (client *PushClient) listen(serverConn api.Conn) {
-	conn := serverConn.GetConn()
+func (client *PushClient) Stop() {}
+
+func (client *PushClient) listen() {
+	conn := client.conn.GetConn()
 	for {
 		packet, err := ReadPacket(conn)
 		if err != nil {
@@ -46,7 +52,8 @@ func (client *PushClient) listen(serverConn api.Conn) {
 				break
 			}
 		}
-		client.messageDispatcher.OnReceive(*packet, serverConn)
+		client.conn.UpdateLastReadTime()
+		client.messageDispatcher.OnReceive(*packet, client.conn)
 	}
 }
 
@@ -100,7 +107,6 @@ func (client *PushClient) Connect(host string, port int) *net.TCPConn {
 	}
 	client.conn = NewPushConnection()
 	client.conn.Init(conn)
-	client.handshake()
 	return conn
 }
 
@@ -113,9 +119,14 @@ func (client *PushClient) Close() {
 	}
 }
 
+func (client *PushClient) reconnect() {
+	client.Close()
+	client.Start()
+}
+
 func (client *PushClient) handshake() {
-	context := client.conn.GetSessionContext()
-	context.Cipher0, _ = security.NewRsaCipher()
+	ctx := client.conn.GetSessionContext()
+	ctx.Cipher0, _ = security.NewRsaCipher()
 	handshakeMsg := message.NewHandshakeMessage0(client.conn)
 	handshakeMsg.DeviceId = "1111"
 	handshakeMsg.OsName = "Windows"
@@ -127,5 +138,39 @@ func (client *PushClient) handshake() {
 	handshakeMsg.MaxHeartbeat = 10 * time.Second
 	handshakeMsg.Timestamp = 0
 	handshakeMsg.Send()
-	context.Cipher0 = &security.AesCipher{Key: handshakeMsg.ClientKey, Iv: handshakeMsg.Iv}
+	ctx.Cipher0 = &security.AesCipher{Key: handshakeMsg.ClientKey, Iv: handshakeMsg.Iv}
+}
+
+func (client *PushClient) heartbeatCheck(ctx context.Context, cancel context.CancelFunc) {
+	conn := client.conn
+	hbTimeoutTimes := 0
+	for {
+		select {
+		case t := <-time.After(conn.GetSessionContext().Heartbeat):
+			log.Debug("time after result: %v", t)
+			if conn.IsReadTimeout() {
+				hbTimeoutTimes++
+				log.Warn("heartbeat timeout times=%d", hbTimeoutTimes)
+			} else {
+				hbTimeoutTimes = 0
+				log.Debug("connection health for read")
+			}
+			if hbTimeoutTimes >= MAX_HB_TIMEOUT_COUNT {
+				log.Warn("heartbeat timeout times=%d over limit=%d, client restart", hbTimeoutTimes, MAX_HB_TIMEOUT_COUNT)
+				hbTimeoutTimes = 0
+				client.reconnect()
+				cancel()
+				continue
+			}
+			if conn.IsWriteTimeout() {
+				log.Debug("<<< send heartbeat ping...")
+				conn.Send(protocol.Packet{Cmd: protocol.HEARTBEAT})
+			} else {
+				log.Debug("connection health for write, next loop send heartbeat")
+			}
+		case <-ctx.Done():
+			log.Info("heartbeat check cancel because of context done.")
+			return;
+		}
+	}
 }

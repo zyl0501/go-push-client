@@ -25,6 +25,7 @@ type Conn interface {
 	GetSessionContext() *SessionContext
 	SetSessionContext(context SessionContext)
 	Send(packet protocol.Packet)
+	Reconnect()
 }
 
 type ConnectionManager interface {

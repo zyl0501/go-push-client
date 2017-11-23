@@ -6,6 +6,8 @@ import (
 	"time"
 	"github.com/zyl0501/go-push-client/push/security"
 	"github.com/zyl0501/go-push-client/push/api/protocol"
+	"bufio"
+	log "github.com/alecthomas/log4go"
 )
 
 var (
@@ -37,7 +39,7 @@ func (serverConn *PushConnection) Init(conn net.Conn) {
 	serverConn.status = api.STATUS_CONNECTED
 	serverConn.lastReadTime = time.Now()
 	serverConn.lastWriteTime = time.Now()
-	serverConn.context = api.SessionContext{}
+	serverConn.context = api.SessionContext{Heartbeat: DEFAULT_HEARTBEAT}
 	cipher, _ := security.NewRsaCipher()
 	serverConn.context.Cipher0 = cipher
 }
@@ -51,18 +53,24 @@ func (serverConn *PushConnection) IsConnected() bool {
 }
 
 func (serverConn *PushConnection) IsReadTimeout() bool {
-	return time.Since(serverConn.lastReadTime) > serverConn.context.Heartbeat
+	//log.Debug("IsReadTimeout: %v",serverConn.lastReadTime)
+	//return time.Since(serverConn.lastReadTime) > serverConn.context.Heartbeat
+	return time.Since(serverConn.lastReadTime) > (serverConn.context.Heartbeat + time.Second/2)
 }
 
 func (serverConn *PushConnection) IsWriteTimeout() bool {
-	return time.Since(serverConn.lastReadTime) > serverConn.context.Heartbeat
+	//log.Debug("IsWriteTimeout: %v",serverConn.lastWriteTime)
+	//return time.Since(serverConn.lastWriteTime) > serverConn.context.Heartbeat
+	return time.Since(serverConn.lastWriteTime) > (serverConn.context.Heartbeat - time.Second/2)
 }
 
 func (serverConn *PushConnection) UpdateLastReadTime() {
 	serverConn.lastReadTime = time.Now()
+	//log.Debug("UpdateLastReadTime: %v",serverConn.lastReadTime)
 }
 func (serverConn *PushConnection) UpdateLastWriteTime() {
 	serverConn.lastWriteTime = time.Now()
+	//log.Debug("UpdateLastWriteTime: %v",serverConn.lastWriteTime)
 }
 
 func (serverConn *PushConnection) Close() error {
@@ -85,6 +93,13 @@ func (serverConn *PushConnection) SetSessionContext(context api.SessionContext) 
 	serverConn.context = context
 }
 
-func (serverConn *PushConnection) Send(packet protocol.Packet){
+func (serverConn *PushConnection) Send(packet protocol.Packet) {
+	writer := bufio.NewWriter(serverConn.conn)
+	writer.Write(protocol.EncodePacket(packet))
+	writer.Flush()
+	serverConn.UpdateLastWriteTime()
+}
 
+func (serverConn *PushConnection) Reconnect() {
+	//serverConn.Close()
 }

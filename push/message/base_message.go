@@ -2,7 +2,6 @@ package message
 
 import (
 	"github.com/zyl0501/go-push-client/push/api"
-	"bufio"
 	"github.com/zyl0501/go-push-client/push/api/protocol"
 	log "github.com/alecthomas/log4go"
 	"errors"
@@ -70,16 +69,12 @@ func (msg *BaseMessage) GetPacket() protocol.Packet {
 
 func (msg *BaseMessage) Send() {
 	msg.EncodeBody()
-	writer := bufio.NewWriter(msg.GetConnection().GetConn())
-	writer.Write(protocol.EncodePacket(msg.GetPacket()))
-	writer.Flush()
+	msg.GetConnection().Send(msg.GetPacket())
 }
 
 func (msg *ByteBufMessage) sendRaw() {
 	msg.encodeRaw()
-	writer := bufio.NewWriter(msg.GetConnection().GetConn())
-	writer.Write(protocol.EncodePacket(msg.GetPacket()))
-	writer.Flush()
+	msg.GetConnection().Send(msg.GetPacket())
 }
 
 func (msg *ByteBufMessage) encodeRaw() {
