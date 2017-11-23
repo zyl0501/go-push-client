@@ -146,8 +146,7 @@ func (client *PushClient) heartbeatCheck(ctx context.Context, cancel context.Can
 	hbTimeoutTimes := 0
 	for {
 		select {
-		case t := <-time.After(conn.GetSessionContext().Heartbeat):
-			log.Debug("time after result: %v", t)
+		case <-time.After(conn.GetSessionContext().Heartbeat):
 			if conn.IsReadTimeout() {
 				hbTimeoutTimes++
 				log.Warn("heartbeat timeout times=%d", hbTimeoutTimes)

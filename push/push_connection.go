@@ -53,24 +53,22 @@ func (serverConn *PushConnection) IsConnected() bool {
 }
 
 func (serverConn *PushConnection) IsReadTimeout() bool {
-	//log.Debug("IsReadTimeout: %v",serverConn.lastReadTime)
-	//return time.Since(serverConn.lastReadTime) > serverConn.context.Heartbeat
+	//加超时时间是防止处理速度过快，导致一直超时。
+	//timer    		00:00.0		00.05.5	next timer, the 0.5 second means between twice ticker process time
+	//lastWriteTime	00:00.1		00.05.1	timeout
+	//lastReadTime	00.00.2		00.05.2	timeout
 	return time.Since(serverConn.lastReadTime) > (serverConn.context.Heartbeat + time.Second/2)
 }
 
 func (serverConn *PushConnection) IsWriteTimeout() bool {
-	//log.Debug("IsWriteTimeout: %v",serverConn.lastWriteTime)
-	//return time.Since(serverConn.lastWriteTime) > serverConn.context.Heartbeat
 	return time.Since(serverConn.lastWriteTime) > (serverConn.context.Heartbeat - time.Second/2)
 }
 
 func (serverConn *PushConnection) UpdateLastReadTime() {
 	serverConn.lastReadTime = time.Now()
-	//log.Debug("UpdateLastReadTime: %v",serverConn.lastReadTime)
 }
 func (serverConn *PushConnection) UpdateLastWriteTime() {
 	serverConn.lastWriteTime = time.Now()
-	//log.Debug("UpdateLastWriteTime: %v",serverConn.lastWriteTime)
 }
 
 func (serverConn *PushConnection) Close() error {
