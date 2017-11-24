@@ -12,23 +12,30 @@ import (
 	"github.com/zyl0501/go-push-client/push/message"
 	"time"
 	"context"
-	"github.com/zyl0501/go-push/core/session"
-	"github.com/zyl0501/go-push/core/connection"
+	"github.com/zyl0501/go-push-client/push/session"
 )
 
 type PushClient struct {
 	conn              api.Conn
 	config            ClientConfig
 	messageDispatcher message.MessageDispatcher
+	sessionStorage    api.SessionStorage
+}
+
+func NewPushClient() *PushClient {
+	client := PushClient{}
+	client.sessionStorage = &session.MemorySessionStorage{}
+	return &client
 }
 
 func (client *PushClient) Init() {
 	client.messageDispatcher = message.NewMessageDispatcher()
-	client.messageDispatcher.Register(protocol.HANDSHAKE, handler.NewHandshakeOkHandler())
+	client.messageDispatcher.Register(protocol.HANDSHAKE, handler.NewHandshakeOkHandler(client.sessionStorage))
 	client.messageDispatcher.Register(protocol.PUSH, handler.NewPushHandler())
 	client.messageDispatcher.Register(protocol.OK, handler.NewOKMessageHandler())
 	client.messageDispatcher.Register(protocol.HEARTBEAT, &handler.HeartbeatHandler{})
 	client.messageDispatcher.Register(protocol.FAST_CONNECT, handler.NewFastConnectOKHandler())
+	client.messageDispatcher.Register(protocol.ERROR, handler.NewErrorMessageHandler())
 }
 
 func (client *PushClient) Start() {
@@ -39,8 +46,6 @@ func (client *PushClient) Start() {
 	go client.heartbeatCheck(connCtx, cancel)
 	client.handshake()
 }
-
-func (client *PushClient) Stop() {}
 
 func (client *PushClient) listen() {
 	conn := client.conn.GetConn()
@@ -131,7 +136,7 @@ func (client *PushClient) handshake() {
 	ctx := client.conn.GetSessionContext()
 	ctx.Cipher0, _ = security.NewRsaCipher()
 	handshakeMsg := message.NewHandshakeMessage0(client.conn)
-	handshakeMsg.DeviceId = "1111"
+	handshakeMsg.DeviceId = DEVICE_ID
 	handshakeMsg.OsName = "Windows"
 	handshakeMsg.OsVersion = "10"
 	handshakeMsg.ClientVersion = "1.0"
@@ -145,13 +150,14 @@ func (client *PushClient) handshake() {
 }
 
 func (client *PushClient) fastConnect() {
+	s := client.sessionStorage.GetSession()
 	msg := message.NewFastConnectMessage0(client.conn)
 	msg.DeviceId = DEVICE_ID;
-	msg.SessionId = session.sessionId;
+	msg.SessionId = s.SessionId;
 	msg.ExpireHeartbeat = MAX_HB_TIMEOUT_COUNT;
 	msg.Send();
 	log.Warn("<<< do fast connect, message=%s", msg)
-	client.conn.GetSessionContext().Cipher0 = session.cipher;
+	client.conn.GetSessionContext().Cipher0 = s.Cipher0;
 }
 
 func (client *PushClient) heartbeatCheck(ctx context.Context, cancel context.CancelFunc) {
@@ -159,7 +165,8 @@ func (client *PushClient) heartbeatCheck(ctx context.Context, cancel context.Can
 	hbTimeoutTimes := 0
 	for {
 		select {
-		case <-time.After(conn.GetSessionContext().Heartbeat):
+		case t := <-time.After(conn.GetSessionContext().Heartbeat):
+			log.Debug("current time=%v, heartbeat=%s", t, conn.GetSessionContext().Heartbeat)
 			if conn.IsReadTimeout() {
 				hbTimeoutTimes++
 				log.Warn("heartbeat timeout times=%d", hbTimeoutTimes)
@@ -185,4 +192,9 @@ func (client *PushClient) heartbeatCheck(ctx context.Context, cancel context.Can
 			return;
 		}
 	}
+}
+
+func (client *PushClient) TestFastConnect(){
+	//client.Close()
+	client.fastConnect()
 }

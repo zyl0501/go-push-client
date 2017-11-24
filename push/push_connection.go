@@ -7,7 +7,6 @@ import (
 	"github.com/zyl0501/go-push-client/push/security"
 	"github.com/zyl0501/go-push-client/push/api/protocol"
 	"bufio"
-	log "github.com/alecthomas/log4go"
 )
 
 var (

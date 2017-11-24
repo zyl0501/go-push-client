@@ -38,7 +38,7 @@ type ConnectionManager interface {
 }
 
 type SessionContext struct {
-	UserId  string
+	UserId    string
 	Tags      string
 	Heartbeat time.Duration
 	Cipher0   Cipher

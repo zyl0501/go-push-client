@@ -10,11 +10,12 @@ import (
 
 type HandshakeOkHandler struct {
 	*BaseMessageHandler
+	sessionStorage api.SessionStorage
 }
 
-func NewHandshakeOkHandler() *HandshakeOkHandler {
+func NewHandshakeOkHandler(sessionStorage api.SessionStorage) *HandshakeOkHandler {
 	baseHandler := &BaseMessageHandler{}
-	handler := HandshakeOkHandler{BaseMessageHandler: baseHandler}
+	handler := HandshakeOkHandler{BaseMessageHandler: baseHandler, sessionStorage: sessionStorage}
 	handler.BaseMessageHandlerWrap = &handler
 	return &handler
 }
@@ -46,6 +47,18 @@ func (handler *HandshakeOkHandler) HandleMessage(m api.Message) {
 	ctx.Cipher0 = &security.AesCipher{Key: sessionKey, Iv: cp.Iv}
 
 	//触发握手成功事件
-	conn.Send(protocol.Packet{Cmd:protocol.HEARTBEAT})
+	conn.Send(protocol.Packet{Cmd: protocol.HEARTBEAT})
 	//保存token
+	handler.saveToken(*msg, *ctx)
+}
+
+func (handler *HandshakeOkHandler) saveToken(msg message2.HandshakeOKMessage, ctx api.SessionContext) {
+	if msg.SessionId == "" || handler.sessionStorage == nil {
+		return
+	}
+	session := api.PersistentSession{};
+	session.SessionId = msg.SessionId;
+	session.ExpireTime = msg.ExpireTime;
+	session.Cipher0 = ctx.Cipher0;
+	handler.sessionStorage.SaveSession(session);
 }
